@@ -221,38 +221,60 @@ function strokesToSVG(strokes, params) {
 // CANVAS PREVIEW
 // ============================================================
 
-function drawPreview(canvas, strokes, params) {
+function drawPreview(canvas, strokes) {
   if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0,0,W,H);
-  ctx.fillStyle = '#090d18'; ctx.fillRect(0,0,W,H);
-  if (!strokes.length) return;
+  // Use actual rendered size for sharp rendering
+  const W = canvas.clientWidth || canvas.width;
+  const H = canvas.clientHeight || canvas.height;
+  canvas.width = W;
+  canvas.height = H;
 
-  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#090d18';
+  ctx.fillRect(0, 0, W, H);
+  if (!strokes.length) {
+    ctx.fillStyle = '#1a2a3a';
+    ctx.font = '14px Segoe UI';
+    ctx.textAlign = 'center';
+    ctx.fillText('הכנס טקסט לתצוגה מקדימה', W/2, H/2);
+    return;
+  }
+
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
   for (const s of strokes) {
     minX=Math.min(minX,s.x1,s.x2); minY=Math.min(minY,s.y1,s.y2);
     maxX=Math.max(maxX,s.x1,s.x2); maxY=Math.max(maxY,s.y1,s.y2);
   }
 
-  const pad = 30;
-  const bw = maxX-minX||1, bh = maxY-minY||1;
-  const scale = Math.min((W-pad*2)/bw, (H-pad*2)/bh);
-  const ox = pad + (W-pad*2-bw*scale)/2;
-  const oy = pad + (H-pad*2-bh*scale)/2;
-  const tx = x => ox + (x-minX)*scale;
-  const ty = y => H - oy - (y-minY)*scale;
+  const pad = 40;
+  const bw = (maxX - minX) || 1;
+  const bh = (maxY - minY) || 1;
+  const scale = Math.min((W - pad*2) / bw, (H - pad*2) / bh);
+  const ox = pad + (W - pad*2 - bw*scale) / 2;
+  const oy = pad + (H - pad*2 - bh*scale) / 2;
+  const tx = x => ox + (x - minX) * scale;
+  const ty = y => H - oy - (y - minY) * scale;
 
-  // Draw travel moves
   let prev = null;
   for (const s of strokes) {
-    if (prev && Math.hypot(prev.x2-s.x1, prev.y2-s.y1) > 0.1) {
-      ctx.strokeStyle='rgba(255,80,80,0.3)'; ctx.lineWidth=0.8; ctx.setLineDash([3,3]);
-      ctx.beginPath(); ctx.moveTo(tx(prev.x2),ty(prev.y2)); ctx.lineTo(tx(s.x1),ty(s.y1)); ctx.stroke();
+    if (prev && Math.hypot(prev.x2-s.x1, prev.y2-s.y1) > 0.01) {
+      ctx.strokeStyle = 'rgba(255,80,80,0.35)';
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(tx(prev.x2), ty(prev.y2));
+      ctx.lineTo(tx(s.x1), ty(s.y1));
+      ctx.stroke();
       ctx.setLineDash([]);
     }
-    ctx.strokeStyle='#00e5ff'; ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.moveTo(tx(s.x1),ty(s.y1)); ctx.lineTo(tx(s.x2),ty(s.y2)); ctx.stroke();
+    ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(tx(s.x1), ty(s.y1));
+    ctx.lineTo(tx(s.x2), ty(s.y2));
+    ctx.stroke();
     prev = s;
   }
 }
@@ -280,7 +302,20 @@ export default function TextToGcode() {
   const strokes = textToStrokes(text, fontSize, letterSpacing, lineHeight);
 
   useEffect(() => {
-    drawPreview(previewCanvas.current, strokes, {});
+    const canvas = previewCanvas.current;
+    if (!canvas) return;
+    // Set canvas size to match its CSS size
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width > 0) {
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+      }
+      drawPreview(canvas, strokes);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
   }, [strokes]);
 
   const exportGcode = () => {
@@ -401,7 +436,7 @@ export default function TextToGcode() {
               <span>תצוגה מקדימה — קו בודד</span>
               <span style={{fontSize:11,color:'#2a4060'}}>כחול = חיתוך | אדום = תנועת אוויר</span>
             </div>
-            <canvas ref={previewCanvas} width={900} height={520} style={{width:'100%',display:'block'}}/>
+            <canvas ref={previewCanvas} style={{width:'100%',height:'480px',display:'block'}}/>
           </div>
 
           {/* Supported chars info */}
