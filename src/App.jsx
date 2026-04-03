@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import ImageToGcode from "./ImageToGcode";
+import TextToGcode from "./TextToGcode";
 
 // ============================================================
 // UTILITIES
@@ -563,7 +564,7 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: '#0a0e1a' }}>
       <div style={{ background: '#060a14', borderBottom: '1px solid #1a2540', padding: '0 32px', display: 'flex' }}>
-        {[['optimizer','⚙ אופטימיזציית וקטור'],['image','🖼 תמונה → G-code']].map(([tab, label]) => (
+        {[['optimizer','⚙ אופטימיזציית וקטור'],['image','🖼 תמונה → G-code'],['text','T טקסט → G-code']].map(([tab, label]) => (
           <button key={tab} onClick={() => setAppTab(tab)} style={{
             padding: '14px 24px', fontSize: 14, cursor: 'pointer', border: 'none',
             borderBottom: appTab === tab ? '2px solid #00e5ff' : '2px solid transparent',
@@ -572,7 +573,7 @@ export default function App() {
           }}>{label}</button>
         ))}
       </div>
-      {appTab === 'optimizer' ? <CNCOptimizer /> : <ImageToGcode />}
+      {appTab === 'optimizer' ? <CNCOptimizer /> : appTab === 'image' ? <ImageToGcode /> : <TextToGcode />}
     </div>
   );
 }
